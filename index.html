@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+<div id="main">
+  <div class="navbar">
+    <a href="#home">Home</a>
+    <a href="#news">News</a>
+    <div class="dropdown">
+      <button class="dropbtn">Dropdown 
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <div class="header">
+          <h2>Mega Menu</h2>
+        </div>   
+        <div class="row">
+          <div class="column">
+            <h3>Programas disponibles actuamente</h3>
+            <a href="#" @click="updateProgamSelected(item)"
+            v-for="(item, index) in programs">{{item.Program_name}}</a>
+          </div>
+          <div class="column">
+            <h3>Programas disponibles proximamente</h3>
+            <a href="#">Ingenieria de Requisitos</a>
+            <a href="#">Maestria en Inteligencia Artificial</a>
+            <a href="#">Especializacion en Big Data</a>
+          </div>
+        </div>
+      </div>
+    </div> 
+  </div>
+
+  <div v-if="someProgramSelected==false" style="padding:16px" id="feeds">
+    <h3>Bienvenidos a la pagina de Pregrados de Ingenieria</h3>
+    <p>Este sitio aún se encuentra en producción. Contacto: <br>ruben4181@gmail.com<br>verabrayan@gmail.com<br>nalvarez@gmail.com<br>
+    <br>
+    <pre>
+    {{ programs }}
+    </pre>
+    </p>
+  </div>
+  <div v-else style="padding:16px">
+    <h3>{{selectedProgram.Program_name}}</h3>
+    <div class="row">
+      <button class="btn btn-primary"
+            @click="someProgramSelected=false">
+              Atras
+      </button>
+    </div>
+    <pre>
+        {{posts}}
+    </pre>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+  //var urlApi='https://api.myjson.com/bins/uow10'
+  var urlApi='http://localhost:8080/'
+  var programNameSelected = "";
+  var app=new Vue({
+    el:'#main',
+    created: function(){
+      axios.defaults.headers.get['Content-Type'] = 'application/json';
+      axios.defaults.withCredentials = true;
+      axios.defaults.crossDomain = true;
+      this.getMet();
+    },
+    data:{
+      programs:null,
+      posts:null,
+      selectedProgram:null,
+      someProgramSelected:false
+    },
+    methods:{
+      getMet : function(){
+        axios.get(urlApi+'getPrograms').then(response=>(this.programs=response.data));
+      },
+      getPosts : function(){
+        axios.get(urlApi+'getPosts/'+this.selectedProgram.ID_program).then(response=>(this.posts=response.data));
+      },
+      updateProgamSelected (selectedItem){
+        this.selectedProgram=selectedItem;
+        this.someProgramSelected=true;
+        this.getPosts();
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

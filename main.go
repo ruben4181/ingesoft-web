@@ -5,7 +5,10 @@ import(
 	_ "github.com/go-sql-driver/mysql"
 	"database/sql"
 	"log"
-	"strconv"
+	"net/http"
+	"encoding/json"
+	"github.com/gorilla/mux"
+	//"strconv"
 )
 
 var database *sql.DB;
@@ -70,7 +73,7 @@ func GetPosts(condition string) []Post{
 	}
 	return posts;
 }
-
+/*
 func NewPost(post Post){
 	_, err:=database.Query("INSERT INTO posts(post_title, post_abstract, post_body, id_user, id_program) VALUES('"+
 		post.Post_title+"', '"+post.Post_abstract+"', '"+post.Post_body+"', "+strconv.Itoa(post.ID_user)+", "+strconv.Itoa(post.ID_program)+")");
@@ -81,7 +84,7 @@ func NewPost(post Post){
 		fmt.Println("New Post has been added");
 	}
 }
-
+*/
 func OpenDB(user string, password string) *sql.DB{
 	fmt.Println("Openning database 'ingesoft'");
 	db, err:=sql.Open("mysql", user+":"+password+"@tcp(localhost:3306)/ingesoft");
@@ -159,6 +162,25 @@ func GetPrograms(condition string) []Program{
 
 //Funciones que interactuan con el Frontend
 
+func GetProgramsEP(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+    w.Header().Set("Access-Control-Allow-Headers", "*")
+    fmt.Println("Sending programs to client");
+    programs:=GetPrograms("1");
+    json.NewEncoder(w).Encode(programs);
+}
+
+func GetPostsEP(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+    w.Header().Set("Access-Control-Allow-Headers", "*")
+    fmt.Println("Sending posts to client");
+    params:=mux.Vars(req);
+    posts:=GetPosts("id_program='"+params["id_program"]+"'");
+    json.NewEncoder(w).Encode(posts);
+}
+
 //Main
 
 func main() {
@@ -169,6 +191,14 @@ func main() {
 	fmt.Println(programs);
 	posts:=GetPosts("id_program=1");
 	fmt.Println(posts);
-	NewPost(Post{ID_post:0, Post_title:"Titulo Post 4", Post_abstract:"-Abstract Post 4", Post_body:"Body Post en algun formato", ID_user:3, ID_program:1});
+	//NewPost(Post{ID_post:0, Post_title:"Titulo Post 4", Post_abstract:"-Abstract Post 4", Post_body:"Body Post en algun formato", ID_user:3, ID_program:1});
 	fmt.Println(AuthenticateUser("ruben4181", "Dadada", "None"));
+
+	//Todo lo concerniente a http
+	router:=mux.NewRouter();
+	router.HandleFunc("/getPrograms", GetProgramsEP).Methods("GET");
+	router.HandleFunc("/getPosts/{id_program}", GetPostsEP).Methods("GET");
+
+	http.ListenAndServe(":8080", router);
+
 }
