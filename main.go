@@ -8,7 +8,7 @@ import(
 	"net/http"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	//"strconv"
+	"strconv"
 )
 
 var database *sql.DB;
@@ -73,7 +73,7 @@ func GetPosts(condition string) []Post{
 	}
 	return posts;
 }
-/*
+
 func NewPost(post Post){
 	_, err:=database.Query("INSERT INTO posts(post_title, post_abstract, post_body, id_user, id_program) VALUES('"+
 		post.Post_title+"', '"+post.Post_abstract+"', '"+post.Post_body+"', "+strconv.Itoa(post.ID_user)+", "+strconv.Itoa(post.ID_program)+")");
@@ -84,7 +84,7 @@ func NewPost(post Post){
 		fmt.Println("New Post has been added");
 	}
 }
-*/
+
 func OpenDB(user string, password string) *sql.DB{
 	fmt.Println("Openning database 'ingesoft'");
 	db, err:=sql.Open("mysql", user+":"+password+"@tcp(localhost:3306)/ingesoft");
@@ -181,6 +181,20 @@ func GetPostsEP(w http.ResponseWriter, req *http.Request){
     json.NewEncoder(w).Encode(posts);
 }
 
+func NewPostEP(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+    w.Header().Set("Access-Control-Allow-Headers", "*")
+    w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+    fmt.Println("Creating new posts");
+
+    var post Post;
+    _=json.NewDecoder(req.Body).Decode(&post);
+    fmt.Println(post);
+   	NewPost(post);
+   	json.NewEncoder(w).Encode(post);
+}
+
 //Main
 
 func main() {
@@ -198,6 +212,7 @@ func main() {
 	router:=mux.NewRouter();
 	router.HandleFunc("/getPrograms", GetProgramsEP).Methods("GET");
 	router.HandleFunc("/getPosts/{id_program}", GetPostsEP).Methods("GET");
+	router.HandleFunc("/newPost", NewPostEP).Methods("POST");
 
 	http.ListenAndServe(":8080", router);
 
