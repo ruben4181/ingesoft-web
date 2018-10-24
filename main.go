@@ -75,10 +75,12 @@ func GetPosts(condition string) []Post{
 }
 
 func NewPost(post Post){
-	_, err:=database.Query("INSERT INTO posts(post_title, post_abstract, post_body, id_user, id_program) VALUES('"+
-		post.Post_title+"', '"+post.Post_abstract+"', '"+post.Post_body+"', "+strconv.Itoa(post.ID_user)+", "+strconv.Itoa(post.ID_program)+")");
+	queryString:="INSERT INTO posts(post_title, post_abstract, post_body, id_user, id_program) VALUES('"+
+		post.Post_title+"', '"+post.Post_abstract+"', '"+post.Post_body+"', "+strconv.Itoa(post.ID_user)+", "+strconv.Itoa(post.ID_program)+")";
+	_, err:=database.Query(queryString);
 	if err!=nil{
 		fmt.Println("An error ocurred while insert in posts' table");
+		fmt.Println("The next query: \n"+queryString);
 		log.Fatal(err);
 	}else{
 		fmt.Println("New Post has been added");
