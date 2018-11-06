@@ -9,6 +9,7 @@
   <div class="navbar">
     <a class="active" href="#home">Inicio</a>
     <a href="#news">Noticias</a>
+    <a style="float: right;">Iniciar sesion</a>
     <div class="dropdown">
       <button class="dropbtn">Ver Programas 
         <i class="fa fa-caret-down"></i>
@@ -23,16 +24,9 @@
             <a href="#" @click="updateProgamSelected(item)"
             v-for="(item, index) in programs">{{item.Program_name}}</a>
           </div>
-          <div class="column">
-            <h3>Programas disponibles proximamente</h3>
-            <a href="#">Ingenieria de Requisitos</a>
-            <a href="#">Maestria en Inteligencia Artificial</a>
-            <a href="#">Especializacion en Big Data</a>
-          </div>
         </div>
       </div>
-    </div>
-    <a style="float:right;">Inicia Sesion</a> 
+    </div> 
   </div>
 
   <div class="totalcolumn" v-if="someProgramSelected==false && createNewPost==false" style="padding:16px">
@@ -77,25 +71,25 @@
     </pre>
     </p>
   </div>
-  <div v-else-if="someProgramSelected==true" style="padding:16px">
+  <div v-else-if="someProgramSelected==true && seeMorePost==false" style="padding:16px">
   <div class="header">
     <h3>{{selectedProgram.Program_name}}</h3>
     </div>
     <div class="leftcolumn">
       <div class="card">
         <h2>Regresa al inicio</h2>
-        <button class="btn btn-primary"
+        <button class="btn default"
             @click="someProgramSelected=false">
               Atras
         </button>
       </div>
       <div id="feeds">
-        <a href="#" @click=""
+        <a href="#" @click="seeMore(item)"
                 v-for="(item, index) in posts">
                   <div class="card">
                     <h2>{{item.Post_title}}</h2>
                     <h5>Oct 24, 2018</h5>
-                    <div class="fakeimg" style="height:200px;">Image</div>
+                    <div class="fakeimg" style="height:150px;">Image</div>
                     <p>{{item.Post_abstract}}</p>
                   </div>
         </a>
@@ -103,28 +97,61 @@
     </div>
     <div class="rightcolumn">
       <div class="card">
-        <h2>¿Quieres inscribirte?</h2>
-        <div class="fakeimg" style="height:100px;">Image</div>
-        <p>{{selectedProgram.Program_name}} es tu mejor opcion<br>Haz click en el siguiente enlace para mas informacion</p>
+        <h2>Logros destacados</h2>
+        <p>{{selectedProgram.Program_name}} ha tenido estupendos logros, más informacion dandlo click abajo</p>
+        <button class="btn default">Ver logros</button>
+      </div>
+      <div class="card">
+        <h2>¿Quieres conocer el plan de estudios?</h2>
+        <p>{{selectedProgram.Program_name}} es tu mejor opcion<br>Haz click en el siguiente enlace para 
+        mas informacion acerca del syllabus del programa</p>
+        <button class="btn default"
+        @click="location.href='http://www.google.com';">
+        Ver Syllabus</button>
+      </div>
+      <div class="card">
+        <h2>Conoce tus futuros docentes</h2>
+        <p>Observa el perfil de los docentes inscritos en {{selectedProgram.Program_name}}</p>
+        <button class="btn default">Ver Docentes</button>
       </div>
       <div class="card">
         <h2>Modo editor</h2>
         <p>Ingresa un post para esta seccion haciendo click más abajo</p>
-          <button class="btn btn-primary"
+          <button class="btn default"
           @click="newPost()">
           Crear Post {{createNewPost}}
         </button>
       </div>
     </div>
   </div>
+  <div v-if="seeMorePost==true"/>
+    <button class="btn default"
+      @click="seeMorePost=false">
+      Atras
+    </button>
+    <div class="card"/>
+      <h2>{{selectedPost.Post_title}}</h2>
+      <h5>Oct 24, 2018</h5>
+      <div class="fakeimg" style="height:150px;">Image</div>
+      <p>{{selectedPost.Post_body}}</p>
+      <button class="btn info"
+        @click="">
+        Editar post
+      </button>
+      <button class="btn warning"
+        @click="delPost()">
+        Eliminar post
+      </button>
+    </div>
+  </div>
   <div v-else-if="createNewPost==true" style="padding: 16px">
     <h3>Crear nuevo Post</h3>
     <div class="row">
-      <button class="btn btn-primary"
+      <button class="btn default"
             @click="createNewPost=false">
               Atras
       </button>
-      <button class="btn btn-primary"
+      <button class="btn success"
         @click="sendNewPost()">
         Enviar nuevo post
       </button>
@@ -145,6 +172,7 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
 <script>
   //var urlApi='https://api.myjson.com/bins/uow10'
   var urlApi='http://localhost:8080/'
@@ -162,8 +190,10 @@
       programs:null,
       posts:null,
       selectedProgram:null,
+      selectedPost:null,
       someProgramSelected:false,
       createNewPost:false,
+      seeMorePost:false,
       Post:{
         ID_post:2,
         Post_title:"Titulo defecto",
@@ -178,7 +208,14 @@
         axios.get(urlApi+'getPrograms').then(response=>(this.programs=response.data));
       },
       getPosts : function(){
+        console.log("re-rendered start");
         axios.get(urlApi+'getPosts/'+this.selectedProgram.ID_program).then(response=>(this.posts=response.data));
+        this.$nextTick(function () {
+          this.show=false;
+          this.$nextTick(()=>{
+            console.log("re-rendered end");
+          });
+        });
       },
       updateProgamSelected (selectedItem){
         this.selectedProgram=selectedItem;
@@ -200,9 +237,31 @@
         this.someProgramSelected=true;
         this.getPosts(); 
       },
+      seeMore(selectedItem){
+        this.selectedPost=selectedItem;
+        this.Post=selectedItem;
+        this.seeMorePost=true;
+      },
       newPost(){
         this.someProgramSelected=false;
         this.createNewPost=true;
+      },
+      delPost(){
+        this.getMet();
+        this.seeMorePost=false;
+        this.someProgramSelected=false;
+        axios({
+          method: 'post',
+          url: 'http://localhost:8080/delPost',
+          withCredentials: true,
+          crossdomain: true,
+          data: this.Post,
+          headers: { 
+          "Content-Type": "application/x-www-form-urlencoded"
+          }
+        });
+        this.getPosts();
+        this.someProgramSelected=true;
       }
     }
   });
