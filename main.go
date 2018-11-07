@@ -40,6 +40,19 @@ type Post struct {
 	ID_program    int
 }
 
+type Event struct {
+	ID_event           int
+	Event_title        string
+	Event_abstract     string
+	Event_body         string
+	Event_date_relased string
+	Event_time_relased string
+	Event_date         string
+	Event_time         string
+	ID_user            int
+	ID_program         int
+}
+
 type InternalResponse struct {
 	Status      int
 	Description string
@@ -51,6 +64,40 @@ const OK_STATUS = 0
 const USER_PASS_NOT_MATCH = 1
 const ERR_STATUS = -1
 const EXCEPTION_STATUS = -2
+
+/*
+	EXAMPLE QUERY TO ADD NEW EVENT TO DATABASE
+
+	INSERT INTO events(event_title, event_abstract, event_body, event_date_time_relased, event_date_time, id_user, id_program) VALUES('Primer evento Javeriano', 'El primer evento Javeriano que se realizara a finalizar este semestre contara con presentaciones artisticas y deportivas para todos los gustos', 'El contenido del evento', NOW(), '2018-11-26 07:00:00', 4, 1);
+*/
+
+func GetEvents(condition string) []Event {
+	var events []Event
+	data, err := database.Query("SELECT id_event, event_title, event_abstract, event_body, DATE(event_date_time_relased) as event_date_relased, " +
+		"TIME(event_date_time_relased) as event_time_relased, DATE(event_date_time) as event_date, TIME(event_date_time) as event_time, " +
+		"id_user, id_program from events WHERE " + condition)
+	if err != nil {
+		fmt.Println("An error ocurred during executing query in GetEvents function")
+		log.Fatal(err)
+	} else {
+		for data.Next() {
+			var id_event, id_user, id_program int
+			var event_title, event_abstract, event_body, event_date_relased, event_time_relased,
+				event_date, event_time string
+			err2 := data.Scan(&id_event, &event_title, &event_abstract, &event_body, &event_date_relased, &event_time_relased,
+				&event_date, &event_time, &id_user, &id_program)
+			if err2 != nil {
+				fmt.Println("Error while scanning result from query in event")
+				log.Fatal(err2)
+			} else {
+				events = append(events, Event{ID_event: id_event, Event_title: event_title, Event_abstract: event_abstract,
+					Event_body: event_body, Event_date_relased: event_date_relased, Event_time_relased: event_time_relased,
+					Event_date: event_date, Event_time: event_time, ID_user: id_user, ID_program: id_program})
+			}
+		}
+	}
+	return events
+}
 
 func GetPosts(condition string) []Post {
 	var posts []Post
@@ -192,11 +239,19 @@ func GetProgramsEP(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(programs)
 }
 
+func GetEventsEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	params := mux.Vars(req)
+	events := GetEvents("id_program='" + params["id_program"] + "'")
+	json.NewEncoder(w).Encode(events)
+}
+
 func GetPostsEP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
-	fmt.Println("Sending posts to client")
 	params := mux.Vars(req)
 	posts := GetPosts("id_program='" + params["id_program"] + "'")
 	json.NewEncoder(w).Encode(posts)
@@ -275,6 +330,7 @@ func main() {
 	router.HandleFunc("/delPost", DelPostEP).Methods("POST")
 	router.HandleFunc("/getPost/{id_post}", GetPostEP).Methods("GET")
 	router.HandleFunc("/updatePost", UpdatePostEP).Methods("POST")
+	router.HandleFunc("/getEvents/{id_program}", GetEventsEP).Methods("GET")
 
 	http.ListenAndServe(":8080", router)
 }
