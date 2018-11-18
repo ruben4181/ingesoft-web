@@ -122,17 +122,17 @@ func GetPosts(condition string) []Post {
 	return posts
 }
 
-func NewEvent(event Event){
-	queryString:="INSERT INTO events(event_title, event_abstract, event_body, event_date_time_relased, event_date_time, id_user, id_program)"+ 
-	"VALUES('"+event.Event_title+"', '"+event.Event_abstract+"', '"+event.Event_body+"', NOW(), '"+event.Event_date+" "+event.Event_time+"', "+
-	strconv.Itoa(event.ID_user)+", "+strconv.Itoa(event.ID_program)")"
-	_, err:=database.Query(queryString);
-	if err!=nil{
-		fmt.Println("An error ocurred while insert in events table");
-		fmt.Println("The next query: \n"+queryString);
-		log.Fatal(err);
-	}else{
-		fmt.Println("New Event has been added");
+func NewEvent(event Event) {
+	queryString := "INSERT INTO events(event_title, event_abstract, event_body, event_date_time_relased, event_date_time, id_user, id_program)" +
+		"VALUES('" + event.Event_title + "', '" + event.Event_abstract + "', '" + event.Event_body + "', NOW(), '" + event.Event_date + " " + event.Event_time + "', " +
+		strconv.Itoa(event.ID_user) + ", " + strconv.Itoa(event.ID_program) + ")"
+	_, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("An error ocurred while insert in events table")
+		fmt.Println("The next query: \n" + queryString)
+		log.Fatal(err)
+	} else {
+		fmt.Println("New Event has been added")
 	}
 }
 
@@ -168,8 +168,8 @@ func DelPost(condition string) {
 	}
 }
 
-func DelEvent(condition string){
-	_, err:= database.Query("DELETE from events WHERE "+condition)
+func DelEvent(condition string) {
+	_, err := database.Query("DELETE from events WHERE " + condition)
 	if err != nil {
 		fmt.Println("An error ocurred during executing Query in DelEvent function")
 		log.Fatal(err)
@@ -240,12 +240,12 @@ func GetPrograms(condition string) []Program {
 	return programs
 }
 
-func UpdatedEvent(event Event, condition string){
-	queryString:="UPDATE events SET event_title='"+event.Event_title+"', event_abstract='"+event.Event_abstract+"', "+
-	"event_body='"+event.Event_body+"', event_date_time='"+event.Event_date+" "+event.Event_time+"', id_user='"event.ID_user"' "+
-	"WHERE "+condition
-	_, err:=database.Query(queryString);
-	if err!=nil{
+func UpdateEvent(event Event, condition string) {
+	queryString := "UPDATE events SET event_title='" + event.Event_title + "', event_abstract='" + event.Event_abstract + "', " +
+		"event_body='" + event.Event_body + "', event_date_time='" + event.Event_date + " " + event.Event_time + "', id_user='" + strconv.Itoa(event.ID_user) + "' " +
+		"WHERE " + condition
+	_, err := database.Query(queryString)
+	if err != nil {
 		fmt.Println("Error while executing query in UpdateEvent")
 		log.Fatal(err)
 	}
@@ -254,7 +254,7 @@ func UpdatedEvent(event Event, condition string){
 func UpdatePost(post Post, condition string) {
 	queryString := "UPDATE posts SET post_title='" + post.Post_title + "', post_abstract='" + post.Post_abstract + "', " +
 		"post_body='" + post.Post_body + "', id_user=" + strconv.Itoa(post.ID_user) + " WHERE " + condition
-	_, err := database.Query(query)
+	_, err := database.Query(queryString)
 	if err != nil {
 		fmt.Println("Error while executing query in UpdatePost")
 		log.Fatal(err)
@@ -290,14 +290,14 @@ func GetPostsEP(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(posts)
 }
 
-func NewEventEP(w http.ResponseWriter, req *http.Request){
+func NewEventEP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
-	
+
 	var event Event
-	_=json.NewDecoder(req.Body).Decode(&event)
+	_ = json.NewDecoder(req.Body).Decode(&event)
 	NewEvent(event)
 	json.NewEncoder(w).Encode(event)
 }
@@ -328,15 +328,27 @@ func UpdatePostEP(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(post)
 }
 
-func DelEventEP(w http.ResponseWriter, req *http.Request){
+func UpdateEventEP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
-	
+
 	var event Event
-	_=json.NewDecoder(req.Body).Decode(&event)
-	DelEvent("id_post="+strconv.Itoa(event.ID_post))
+	_ = json.NewDecoder(req.Body).Decode(&event)
+	UpdateEvent(event, "id_event="+strconv.Itoa(event.ID_event))
+	json.NewEncoder(w).Encode(event)
+}
+
+func DelEventEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	var event Event
+	_ = json.NewDecoder(req.Body).Decode(&event)
+	DelEvent("id_post=" + strconv.Itoa(event.ID_event))
 	json.NewEncoder(w).Encode(event)
 	fmt.Println("Event deleted")
 }
@@ -355,7 +367,6 @@ func DelPostEP(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("Post deleted")
 }
 
-
 func GetPostEP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -370,6 +381,22 @@ func GetPostEP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(post)
+}
+
+func GetEventEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	params := mux.Vars(req)
+	var event Event
+	events := GetEvents("id_event=" + params["id_event"])
+	if len(events) > 0 {
+		event = events[0]
+	}
+
+	json.NewEncoder(w).Encode(event)
 }
 
 //Main
@@ -390,6 +417,9 @@ func main() {
 	router.HandleFunc("/getPost/{id_post}", GetPostEP).Methods("GET")
 	router.HandleFunc("/updatePost", UpdatePostEP).Methods("POST")
 	router.HandleFunc("/getEvents/{id_program}", GetEventsEP).Methods("GET")
-
+	router.HandleFunc("/newEvent", NewEventEP).Methods("POST")
+	router.HandleFunc("/updateEvent", UpdateEventEP).Methods("POST")
+	router.HandleFunc("/delPost/{id_event}", DelEventEP).Methods("POST")
+	router.HandleFunc("/getEvent/{id_event}", GetEventEP).Methods("GET")
 	http.ListenAndServe(":8080", router)
 }
