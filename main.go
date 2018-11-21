@@ -58,6 +58,49 @@ type InternalResponse struct {
 	Description string
 }
 
+type Teacher struct {
+	Username           string
+	Email              string
+	Firstname          string
+	Lastname           string
+	ID_teacher         int
+	ID_user            int
+	ID_department      int
+	ID_program         int
+	Degrees            []Degree
+	Achievements       []Achievement
+	Teacher_department string
+}
+type Achievement struct {
+	ID_achievement          int
+	ID_teacher              int
+	Achievement_name        string
+	Achievement_description string
+	Achievement_year        string
+}
+type Degree struct {
+	ID_degree         int
+	ID_teacher        int
+	Degree_name       string
+	Degree_college    string
+	Degree_city       string
+	Degree_year       string
+	Degree_extra_info string
+}
+type Department struct {
+	ID_department   int
+	Department_name string
+}
+
+type Course struct {
+	ID_course           int
+	Course_name         string
+	Course_description  string
+	Course_n_credits    int
+	Course_requirements string
+	ID_program          int
+}
+
 //Funciones que interactuan con la base de datos
 
 const OK_STATUS = 0
@@ -71,11 +114,35 @@ const EXCEPTION_STATUS = -2
 	INSERT INTO events(event_title, event_abstract, event_body, event_date_time_relased, event_date_time, id_user, id_program) VALUES('Primer evento Javeriano', 'El primer evento Javeriano que se realizara a finalizar este semestre contara con presentaciones artisticas y deportivas para todos los gustos', 'El contenido del evento', NOW(), '2018-11-26 07:00:00', 4, 1);
 */
 
+func GetCourses(condition string) []Course {
+	var courses []Course
+	queryString := "SELECT id_course, course_name, course_description, course_n_credits, course_requirements, id_program FROM courses WHERE " + condition
+	data, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("Error during executing query in GetCourses function")
+		log.Fatal(err)
+	} else {
+		for data.Next() {
+			var id_course, id_program, course_n_credits int
+			var course_name, course_description, course_requirements string
+			err2 := data.Scan(&id_course, &course_name, &course_description, &course_n_credits, &course_requirements, &id_program)
+			if err2 != nil {
+				fmt.Println("Error while scanning data from courses")
+				log.Fatal(err2)
+			} else {
+				courses = append(courses, Course{ID_course: id_course, Course_name: course_name, Course_description: course_description,
+					Course_n_credits: course_n_credits, Course_requirements: course_requirements, ID_program: id_program})
+			}
+		}
+	}
+	return courses
+}
+
 func GetEvents(condition string) []Event {
 	var events []Event
 	data, err := database.Query("SELECT id_event, event_title, event_abstract, event_body, DATE(event_date_time_relased) as event_date_relased, " +
 		"TIME(event_date_time_relased) as event_time_relased, DATE(event_date_time) as event_date, TIME(event_date_time) as event_time, " +
-		"id_user, id_program from events WHERE " + condition)
+		"id_user, id_program from events WHERE " + condition + " ORDER BY event_date_time")
 	if err != nil {
 		fmt.Println("An error ocurred during executing query in GetEvents function")
 		log.Fatal(err)
@@ -99,6 +166,101 @@ func GetEvents(condition string) []Event {
 	return events
 }
 
+func GetTeachers(condition string) []Teacher {
+	var teachers []Teacher
+	values := "id_teacher, id_user, id_program, id_department, firstname, lastname, username, email"
+	queryString := "SELECT " + values + " FROM teachers NATURAL JOIN users WHERE " + condition
+	data, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("An error ocurred executing query in GetTeachers function")
+		log.Fatal(err)
+	} else {
+		for data.Next() {
+			var id_teacher, id_user, id_program, id_department int
+			var firstname, lastname, username, email string
+			err2 := data.Scan(&id_teacher, &id_user, &id_program, &id_department, &firstname, &lastname, &username, &email)
+			var mtDegree []Degree
+			var mtAchievements []Achievement
+			if err2 != nil {
+				fmt.Println("Error while scanning result from query in teachers")
+				log.Fatal(err2)
+			} else {
+				teachers = append(teachers, Teacher{Username: username, Firstname: firstname, Lastname: lastname,
+					ID_teacher: id_teacher, ID_user: id_user, ID_department: id_department, ID_program: id_program, Degrees: mtDegree, Achievements: mtAchievements})
+			}
+		}
+		for i := 0; i < len(teachers); i++ {
+			teachers[i].Teacher_department = GetDepartment(teachers[i].ID_department)
+			teachers[i].Degrees = GetDegrees(teachers[i])
+			teachers[i].Achievements = GetAchivements(teachers[i])
+		}
+	}
+	return teachers
+}
+
+func GetDepartment(ID_department int) string {
+	var value string
+	data, err := database.Query("SELECT department_name from departments WHERE id_department=" + strconv.Itoa(ID_department))
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		for data.Next() {
+			err2 := data.Scan(&value)
+			if err2 != nil {
+				log.Fatal(err2)
+			}
+		}
+	}
+	return value
+}
+
+func GetDegrees(teacher Teacher) []Degree {
+	queryString := "SELECT  id_degree, degree_name, degree_college, degree_city, degree_year FROM degrees WHERE id_teacher=" + strconv.Itoa(teacher.ID_teacher)
+	data, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("Error during executing query in GetDegrees function")
+		log.Fatal(err)
+	} else {
+		for data.Next() {
+			var id_degree int
+			var degree_name, degree_college, degree_city, degree_year string
+			err2 := data.Scan(&id_degree, &degree_name, &degree_college, &degree_city, &degree_year)
+			if err2 != nil {
+				fmt.Println("Error while scanning data from query in degrees")
+				log.Fatal(err2)
+			} else {
+				teacher.Degrees = append(teacher.Degrees, Degree{ID_degree: id_degree, Degree_name: degree_name,
+					Degree_college: degree_college, Degree_city: degree_city, Degree_year: degree_year})
+			}
+		}
+	}
+	return teacher.Degrees
+}
+
+func GetAchivements(teacher Teacher) []Achievement {
+	queryString := "SELECT id_achievement, achievement_name, achievement_description, achievement_year FROM achievements WHERE id_teacher=" + strconv.Itoa(teacher.ID_teacher)
+	data, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("Error during executing query in GetAchievements function")
+		log.Fatal(err)
+	} else {
+		for data.Next() {
+			var id_achievement int
+			var achievement_name, achievement_description, achievement_year string
+			err2 := data.Scan(&id_achievement, &achievement_name, &achievement_description, &achievement_year)
+			if err2 != nil {
+				fmt.Println("Error while scanning data from achievements")
+				log.Fatal(err2)
+			} else {
+				teacher.Achievements = append(teacher.Achievements, Achievement{ID_achievement: id_achievement,
+					ID_teacher: 1, Achievement_name: achievement_name, Achievement_description: achievement_description,
+					Achievement_year: achievement_year})
+			}
+		}
+	}
+	return teacher.Achievements
+}
+
 func GetPosts(condition string) []Post {
 	var posts []Post
 	data, err := database.Query("SELECT id_post, post_title, post_abstract, post_body, id_user, id_program FROM posts WHERE " + condition)
@@ -120,6 +282,61 @@ func GetPosts(condition string) []Post {
 		}
 	}
 	return posts
+}
+
+func NewCourse(course Course) {
+	queryString := "insert into courses(course_name, course_description, course_n_credits, course_requirements, id_program) VALUES('" +
+		course.Course_name + "', '" + course.Course_description + "', " + strconv.Itoa(course.Course_n_credits) + ", '" +
+		course.Course_requirements + "', " + strconv.Itoa(course.ID_program) + ")"
+	_, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("Error during executing query in NewCourse function")
+		log.Fatal(err)
+	}
+}
+
+func NewTeacher(teacher Teacher) {
+	var next_index int
+	q, q_err := database.Query("SELECT 'auto_increment' FROM INFORMATION_SCHEMA.TABLES WHERE table_name='teachers'")
+	if q_err != nil {
+		log.Fatal(q_err)
+	} else {
+		for q.Next() {
+			q_err2 := q.Scan(&next_index)
+			if q_err2 != nil {
+				log.Fatal(q_err2)
+			}
+		}
+	}
+	queryString := "INSERT INTO teachers(id_user, id_department, id_program) VALUES(" +
+		strconv.Itoa(teacher.ID_user) + ", " + strconv.Itoa(teacher.ID_department) + ", " + strconv.Itoa(teacher.ID_program) + ")"
+	_, err := database.Query(queryString)
+	if err != nil {
+		fmt.Println("An error ocurred while insert in events table")
+		fmt.Println("The next query: \n" + queryString)
+		log.Fatal(err)
+	} else {
+		deegres_lenght := len(teacher.Degrees)
+		for i := 0; i < deegres_lenght; i++ {
+			tmpString := "insert into degrees(id_teacher, degree_name, degree_college, degree_city, degree_year, degree_extra_info) VALUES(" +
+				strconv.Itoa(next_index) + ", '" + teacher.Degrees[i].Degree_name + "', '" + teacher.Degrees[i].Degree_college +
+				"', '" + teacher.Degrees[i].Degree_city + "', '" + teacher.Degrees[i].Degree_year + "', '" + teacher.Degrees[i].Degree_extra_info + "')"
+			_, err2 := database.Query(tmpString)
+			if err2 != nil {
+				log.Fatal(err2)
+			}
+		}
+		achievements_lenght := len(teacher.Achievements)
+		for i := 0; i < achievements_lenght; i++ {
+			tmpString := "insert into achievements(id_teacher, achievement_name, achievement_description, achievement_year) VALUES(" +
+				strconv.Itoa(next_index) + ", '" + teacher.Achievements[i].Achievement_name + "', '" +
+				teacher.Achievements[i].Achievement_description + "', '" + teacher.Achievements[i].Achievement_year + "')"
+			_, err2 := database.Query(tmpString)
+			if err2 != nil {
+				log.Fatal(err2)
+			}
+		}
+	}
 }
 
 func NewEvent(event Event) {
@@ -290,6 +507,48 @@ func GetPostsEP(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(posts)
 }
 
+func GetTeachersEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	params := mux.Vars(req)
+	teachers := GetTeachers("id_program='" + params["id_program"] + "'")
+	json.NewEncoder(w).Encode(teachers)
+}
+
+func GetCoursesEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	params := mux.Vars(req)
+	courses := GetCourses("id_program='" + params["id_program"] + "'")
+	json.NewEncoder(w).Encode(courses)
+}
+
+func NewCourseEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	var course Course
+	_ = json.NewDecoder(req.Body).Decode(&course)
+	NewCourse(course)
+	json.NewEncoder(w).Encode(course)
+}
+
+func NewTeacherEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	var teacher Teacher
+	_ = json.NewDecoder(req.Body).Decode(&teacher)
+	NewTeacher(teacher)
+	json.NewEncoder(w).Encode(teacher)
+}
+
 func NewEventEP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -348,7 +607,7 @@ func DelEventEP(w http.ResponseWriter, req *http.Request) {
 
 	var event Event
 	_ = json.NewDecoder(req.Body).Decode(&event)
-	DelEvent("id_post=" + strconv.Itoa(event.ID_event))
+	DelEvent("id_event=" + strconv.Itoa(event.ID_event))
 	json.NewEncoder(w).Encode(event)
 	fmt.Println("Event deleted")
 }
@@ -419,7 +678,15 @@ func main() {
 	router.HandleFunc("/getEvents/{id_program}", GetEventsEP).Methods("GET")
 	router.HandleFunc("/newEvent", NewEventEP).Methods("POST")
 	router.HandleFunc("/updateEvent", UpdateEventEP).Methods("POST")
-	router.HandleFunc("/delPost/{id_event}", DelEventEP).Methods("POST")
+	router.HandleFunc("/delEvent", DelEventEP).Methods("POST")
 	router.HandleFunc("/getEvent/{id_event}", GetEventEP).Methods("GET")
+	router.HandleFunc("/getTeachers/{id_program}", GetTeachersEP).Methods("GET")
+	router.HandleFunc("/getCourses/{id_program}", GetCoursesEP).Methods("GET")
+	router.HandleFunc("/newCourse", NewCourseEP).Methods("POST")
+	router.HandleFunc("/newTeacher", NewTeacherEP).Methods("POST")
 	http.ListenAndServe(":8080", router)
 }
+
+/*
+
+ */
