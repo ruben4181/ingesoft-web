@@ -297,17 +297,23 @@ func NewCourse(course Course) {
 
 func NewTeacher(teacher Teacher) {
 	var next_index int
-	q, q_err := database.Query("SELECT 'auto_increment' FROM INFORMATION_SCHEMA.TABLES WHERE table_name='teachers'")
-	if q_err != nil {
-		log.Fatal(q_err)
+	v, v_err := database.Query("SELECT id_user from users WHERE username='" + teacher.Username + "'")
+	if v_err != nil {
+		fmt.Println("Error finding user")
+		log.Fatal(v_err)
 	} else {
-		for q.Next() {
-			q_err2 := q.Scan(&next_index)
-			if q_err2 != nil {
-				log.Fatal(q_err2)
+		for v.Next() {
+			var id_user int
+			v_err2 := v.Scan(&id_user)
+			if v_err2 != nil {
+				fmt.Println("Error while scanning data for users")
+				log.Fatal(v_err2)
+			} else {
+				teacher.ID_user = id_user
 			}
 		}
 	}
+
 	queryString := "INSERT INTO teachers(id_user, id_department, id_program) VALUES(" +
 		strconv.Itoa(teacher.ID_user) + ", " + strconv.Itoa(teacher.ID_department) + ", " + strconv.Itoa(teacher.ID_program) + ")"
 	_, err := database.Query(queryString)
@@ -316,13 +322,45 @@ func NewTeacher(teacher Teacher) {
 		fmt.Println("The next query: \n" + queryString)
 		log.Fatal(err)
 	} else {
-		deegres_lenght := len(teacher.Degrees)
-		for i := 0; i < deegres_lenght; i++ {
+		q, q_err := database.Query("SELECT id_teacher FROM teachers WHERE id_user=" + strconv.Itoa(teacher.ID_user) +
+			" AND id_department=" + strconv.Itoa(teacher.ID_department) + " AND id_program=" + strconv.Itoa(teacher.ID_program))
+		if q_err != nil {
+			log.Fatal(q_err)
+		} else {
+			for q.Next() {
+				q_err2 := q.Scan(&next_index)
+				if q_err2 != nil {
+					log.Fatal(q_err2)
+				}
+			}
+		}
+		degrees_lenght := len(teacher.Degrees)
+		if degrees_lenght == 0 {
+			programs := GetPrograms("1=1")
+			programs_lenghts := len(programs)
+			for i := 0; i < programs_lenghts; i++ {
+				teachers := GetTeachers("id_program=" + strconv.Itoa(programs[i].ID_program))
+				teacher_lenght := len(teachers)
+				for j := 0; j < teacher_lenght; j++ {
+					if teachers[j].Username == teacher.Username {
+						teacher.Degrees = teachers[j].Degrees
+						teacher.Achievements = teachers[j].Achievements
+						break
+					}
+				}
+				if len(teacher.Degrees) > 0 {
+					break
+				}
+			}
+		}
+		degrees_lenght = len(teacher.Degrees)
+		for i := 0; i < degrees_lenght; i++ {
 			tmpString := "insert into degrees(id_teacher, degree_name, degree_college, degree_city, degree_year, degree_extra_info) VALUES(" +
 				strconv.Itoa(next_index) + ", '" + teacher.Degrees[i].Degree_name + "', '" + teacher.Degrees[i].Degree_college +
 				"', '" + teacher.Degrees[i].Degree_city + "', '" + teacher.Degrees[i].Degree_year + "', '" + teacher.Degrees[i].Degree_extra_info + "')"
 			_, err2 := database.Query(tmpString)
 			if err2 != nil {
+				fmt.Println("Error aqui: " + tmpString)
 				log.Fatal(err2)
 			}
 		}
@@ -377,10 +415,38 @@ func OpenDB(user string, password string) *sql.DB {
 	return db
 }
 
+func DelDegree(condition string) {
+	_, err := database.Query("DELETE from degrees WHERE " + condition)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+func DelAchievement(condition string) {
+	_, err := database.Query("DELETE from achievements WHERE " + condition)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func DelPost(condition string) {
 	_, err := database.Query("DELETE from posts WHERE " + condition)
 	if err != nil {
 		fmt.Println("An error ocurred during executing Query in DelPost function")
+		log.Fatal(err)
+	}
+}
+
+func DelTeacher(condition string) {
+	_, d_err := database.Query("DELETE from degrees WHERE " + condition)
+	if d_err != nil {
+		log.Fatal(d_err)
+	}
+	_, a_err := database.Query("DELETE from achievements WHERE " + condition)
+	if a_err != nil {
+		log.Fatal(a_err)
+	}
+	_, err := database.Query("DELETE from teachers WHERE " + condition)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
@@ -537,6 +603,41 @@ func NewCourseEP(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(course)
 }
 
+func DelDegreeEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	var degree Degree
+	_ = json.NewDecoder(req.Body).Decode(&degree)
+	DelDegree("id_degree=" + strconv.Itoa(degree.ID_degree))
+	json.NewEncoder(w).Encode(degree)
+}
+
+func DelAchievementEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	var achievement Achievement
+	_ = json.NewDecoder(req.Body).Decode(&achievement)
+	DelAchievement("id_achievement=" + strconv.Itoa(achievement.ID_achievement))
+	json.NewEncoder(w).Encode(achievement)
+}
+func DelTeacherEP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS,*")
+
+	var teacher Teacher
+	_ = json.NewDecoder(req.Body).Decode(&teacher)
+	DelTeacher("id_teacher=" + strconv.Itoa(teacher.ID_teacher))
+	json.NewEncoder(w).Encode(teacher)
+}
+
 func NewTeacherEP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -684,6 +785,9 @@ func main() {
 	router.HandleFunc("/getCourses/{id_program}", GetCoursesEP).Methods("GET")
 	router.HandleFunc("/newCourse", NewCourseEP).Methods("POST")
 	router.HandleFunc("/newTeacher", NewTeacherEP).Methods("POST")
+	router.HandleFunc("/delTeacher", DelTeacherEP).Methods("POST")
+	router.HandleFunc("/delDegree", DelDegreeEP).Methods("POST")
+	router.HandleFunc("/delAchievement", DelAchievementEP).Methods("POST")
 	http.ListenAndServe(":8080", router)
 }
 
